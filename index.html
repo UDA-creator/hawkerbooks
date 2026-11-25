@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>快来钱</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="快来钱">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#0a1120">
+<link rel="apple-touch-icon" href="app-icon.png">
+<link rel="icon" type="image/png" href="app-icon.png">
+<style>
+  html,body{margin:0;height:100%;background:#0a1120;color:#eef3fb;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif}
+  #app{position:fixed;inset:0;width:100%;height:100%;border:0;display:none;background:#0a1120}
+  #setup{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px;box-sizing:border-box;text-align:center}
+  #setup img{width:84px;height:84px;border-radius:20px;margin-bottom:18px}
+  #setup .t{font-size:20px;font-weight:800;margin-bottom:8px}
+  #setup .s{font-size:13px;color:#8b98b0;line-height:1.6;margin-bottom:18px;max-width:320px}
+  #setup input{width:100%;max-width:360px;box-sizing:border-box;height:48px;border-radius:12px;border:1px solid #1f2c44;background:#16223a;color:#eef3fb;font-size:14px;padding:0 12px;outline:none}
+  #setup input:focus{border-color:#6ee7c0}
+  #setup button{margin-top:12px;width:100%;max-width:360px;height:50px;border:0;border-radius:14px;background:#6ee7c0;color:#06281e;font-size:17px;font-weight:800}
+  #err{color:#ff8a8a;font-size:13px;min-height:20px;margin-top:10px}
+</style>
+</head>
+<body>
+<iframe id="app" title="快来钱"></iframe>
+<div id="setup" hidden>
+  <img src="app-icon.png" alt="">
+  <div class="t">老板：贴上老板链接</div>
+  <div class="s">Google Sheet 菜单「🥢 快来钱 → 📱 显示链接」里的「老板链接」（有 ?k= 的那条）。链接只存在这部手机里，不要转发给别人。</div>
+  <input id="u" inputmode="url" autocomplete="off" placeholder="https://script.google.com/macros/s/…/exec?k=…">
+  <button id="ok">保存</button>
+  <div id="err"></div>
+</div>
+<script>
+// HawkerBooks 快来钱外壳：只管图标和全屏。链接（老板钥匙、分店代号）不写在这里，只存在这部手机。
+(function(){
+  var MODE='owner', KEY='hb_'+MODE;
+  function parse(s){
+    s=String(s||'').trim();
+    var m=s.match(/\/macros\/s\/([A-Za-z0-9_-]{20,})/); if(!m) return null;
+    var k=(s.match(/[?&]k=([A-Za-z0-9|]+)/)||[])[1]||'', b=(s.match(/[?&]b=([A-Za-z0-9]+)/)||[])[1]||'';
+    if(MODE==='owner' && !k) return {err:'这是员工链接。老板要贴「老板链接」（里面有 ?k=）'};
+    if(MODE==='staff' && k) return {err:'这是老板链接。员工要贴「员工链接」（里面有 ?p=staff）'};
+    return {id:m[1],k:k,b:b};
+  }
+  function store(v){ try{ if(v==null) localStorage.removeItem(KEY); else localStorage.setItem(KEY,v); }catch(e){} }
+  function read(){ try{ return localStorage.getItem(KEY)||''; }catch(e){ return ''; } }
+  function qs(v){ return '?id='+v.id+(MODE==='owner'?'&k='+v.k:(v.b?'&b='+v.b:'')); }
+  var q=new URLSearchParams(location.search);
+  if(q.get('reset')){ store(null); location.replace(location.pathname); return; }
+  var v=null;
+  if(q.get('id')) v=parse('/macros/s/'+q.get('id')+'/exec'+(q.get('k')?'?k='+q.get('k'):'?p=staff')+(q.get('b')?'&b='+q.get('b'):''));
+  if(!v||v.err){ try{ v=JSON.parse(read()||'null'); }catch(e){ v=null; } }
+  if(v && v.id && (MODE!=='owner'||v.k)){
+    store(JSON.stringify(v));
+    if(location.search!==qs(v)){ try{ history.replaceState(null,'',location.pathname+qs(v)); }catch(e){} }
+    var f=document.getElementById('app');
+    f.src='https://script.google.com/macros/s/'+v.id+'/exec'+(MODE==='owner'?'?k='+encodeURIComponent(v.k):'?p=staff'+(v.b?'&b='+encodeURIComponent(v.b):''));
+    f.style.display='block';
+  } else {
+    document.getElementById('setup').hidden=false;
+    document.getElementById('ok').onclick=function(){
+      var x=parse(document.getElementById('u').value);
+      if(!x){ document.getElementById('err').textContent='看不懂这条链接，请贴 script.google.com 开头的那条'; return; }
+      if(x.err){ document.getElementById('err').textContent=x.err; return; }
+      store(JSON.stringify(x)); location.replace(location.pathname+qs(x));
+    };
+  }
+})();
+</script>
+</body>
+</html>
